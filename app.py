@@ -2,7 +2,7 @@ import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import textwrap
 # --- Configuración de la Página ---
 st.set_page_config(
     page_title="Optimizador de Horarios (Grafos)",
@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Título y Descripción ---
+
 st.title("👨‍💻 Optimizador de Horarios con Grafos")
 st.write("""
 Esta app demuestra cómo el **coloreo de grafos** puede resolver un problema de asignación de horarios.
@@ -19,14 +19,14 @@ Esta app demuestra cómo el **coloreo de grafos** puede resolver un problema de 
 3.  ¡Calcula las **franjas horarias** (colores) necesarias!
 """)
 
-# --- Inicializar el estado de la sesión (para guardar materias y conflictos) ---
+# --- Inicializar el estado de la sesión 
 if 'materias' not in st.session_state:
     st.session_state.materias = []
 if 'conflictos' not in st.session_state:
     st.session_state.conflictos = []
 
-# --- Columnas para la Interfaz (Input | Visualización) ---
-col1, col2 = st.columns([1, 1.5])  # Columna de input es más pequeña
+# --- Columnas para la Interfaz 
+col1, col2 = st.columns([1, 1.5])  
 
 # === COLUMNA 1: INPUTS DEL USUARIO ===
 with col1:
@@ -105,7 +105,7 @@ with col1:
     else:
         st.info("Añade al menos 2 materias para poder crear conflictos.")
         
-    # Mostrar conflictos actuales (esta parte es de la app original, pero la pongo por si acaso)
+    # Mostrar conflictos actuales 
     if st.session_state.conflictos:
         st.write("**Conflictos Actuales:**")
         st.write(st.session_state.conflictos)
@@ -132,8 +132,7 @@ with col2:
             if not G.edges:
                 st.warning("No se definieron conflictos. Todas las clases pueden ir en la misma franja.")
             
-            # Colorear el grafo (NetworkX usa 'greedy_color')
-            # Usamos "largest_first" (Welsh-Powell) que es una buena heurística
+            # Colorear el grafo 
             try:
                 coloring_dict = nx.greedy_color(G, strategy="largest_first")
                 
@@ -149,34 +148,59 @@ with col2:
                         schedule[franja] = []
                     schedule[franja].append(materia)
                 
-                # Mostrar el horario en un DataFrame bonito
+                # Mostrar el horario en un DataFrame 
                 st.subheader("Propuesta de Horario:")
                 df = pd.DataFrame.from_dict(schedule, orient='index').T
-                df = df.reindex(sorted(df.columns), axis=1) # Ordenar Franja 1, Franja 2...
+                df = df.reindex(sorted(df.columns), axis=1) 
                 st.dataframe(df.fillna(""), use_container_width=True)
 
                 # --- Visualización del Grafo ---
                 st.subheader("Grafo de Conflictos Coloreado:")
                 
-                # Colores para el dibujo (mapear colores del dict a colores de matplotlib)
+                # 1. Etiquetas envueltas (como antes)
+                wrapped_labels = {
+                    node: "\n".join(textwrap.wrap(node, 
+                                                width=10, 
+                                                break_long_words=False, 
+                                                replace_whitespace=False)) 
+                    for node in G.nodes()
+                }
+                
+                # 2. Colores del dict
                 node_colors = [coloring_dict[node] for node in G.nodes()]
                 
-                fig, ax = plt.subplots(figsize=(10, 7))
-                pos = nx.spring_layout(G, seed=42)  # Layout consistente
+                fig, ax = plt.subplots(figsize=(11, 8)) # Más espacio
+                
+                # 3. Layout más orgánico
+                # Esta es la clave para que se vea "lindo" y no "explotado"
+                pos = nx.kamada_kawai_layout(G) 
+                
+                # 4. Paleta de colores más suave
+                cmap = plt.cm.get_cmap('Set2') 
                 
                 nx.draw(
                     G,
                     pos,
+                    labels=wrapped_labels,
                     with_labels=True,
-                    node_color=node_colors,
-                    node_size=2000,
-                    font_size=12,
+                    node_color=node_colors,     # Colores basados en el coloreo
+                    cmap=cmap,                  # Paleta de colores pastel
+                    node_size=3500,
+                    edgecolors='black',         # Borde sutil para los nodos
+                    linewidths=0.5,             # Grosor del borde
+                    font_size=9,
                     font_weight="bold",
-                    font_color="white",
-                    cmap=plt.cm.get_cmap('viridis'), # Paleta de colores
+                    font_color="black",         # <-- IMPORTANTE: Letra negra para colores claros
+                    edge_color="#AAAAAA",       # Color de aristas más suave (gris)
+                    style="dashed",             # Estilo de línea más ligero
                     ax=ax
                 )
-                ax.set_title("Materias (Nodos) y Conflictos (Aristas)")
+                
+                # 5. Limpiar el fondo
+                fig.patch.set_facecolor('#FFFFFF')
+                ax.set_facecolor('#FFFFFF')
+                ax.set_title("Materias (Nodos) y Conflictos (Aristas)", pad=20) # Añadir espacio al título
+                
                 st.pyplot(fig)
 
             except Exception as e:
