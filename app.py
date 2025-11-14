@@ -82,7 +82,7 @@ with col1:
             
             submitted_conflicto = st.form_submit_button("Añadir Conflicto")
             
-            # --- Lógica de Validación (AQUÍ ESTÁ EL CAMBIO) ---
+            # --- Lógica de Validación ---
             if submitted_conflicto:
                 # 1. Validar que se seleccionaron dos materias
                 if not materia_1 or not materia_2:
@@ -132,7 +132,7 @@ with col2:
             if not G.edges:
                 st.warning("No se definieron conflictos. Todas las clases pueden ir en la misma franja.")
             
-            # Colorear el grafo 
+            # Colorear el grafo
             try:
                 coloring_dict = nx.greedy_color(G, strategy="largest_first")
                 
@@ -140,7 +140,7 @@ with col2:
                 num_colores = len(set(coloring_dict.values()))
                 st.success(f"¡Hecho! Se necesita un mínimo de **{num_colores}** franjas horarias.")
                 
-                # Agrupar materias por color (franja horaria)
+                # --- (INICIO) CÓDIGO DE LA TABLA QUE FALTABA ---
                 schedule = {}
                 for materia, color in coloring_dict.items():
                     franja = f"Franja Horaria {color + 1}"
@@ -148,19 +148,21 @@ with col2:
                         schedule[franja] = []
                     schedule[franja].append(materia)
                 
-                # Mostrar el horario en un DataFrame 
+                # Mostrar el horario en un DataFrame bonito
                 st.subheader("Propuesta de Horario:")
                 df = pd.DataFrame.from_dict(schedule, orient='index').T
-                df = df.reindex(sorted(df.columns), axis=1) 
+                df = df.reindex(sorted(df.columns), axis=1) # Ordenar Franja 1, Franja 2...
                 st.dataframe(df.fillna(""), use_container_width=True)
+                # --- (FIN) CÓDIGO DE LA TABLA QUE FALTABA ---
 
-                # --- Visualización del Grafo ---
+
+                # --- Visualización del Grafo (VERSIÓN 3.0 "ESTÉTICA CON MÁRGENES") ---
                 st.subheader("Grafo de Conflictos Coloreado:")
                 
-                # 1. Etiquetas envueltas (como antes)
+                # 1. Etiquetas envueltas (para que quepa el texto largo)
                 wrapped_labels = {
                     node: "\n".join(textwrap.wrap(node, 
-                                                width=10, 
+                                                width=11,  # Un poco más ancho (11 caracteres)
                                                 break_long_words=False, 
                                                 replace_whitespace=False)) 
                     for node in G.nodes()
@@ -169,13 +171,13 @@ with col2:
                 # 2. Colores del dict
                 node_colors = [coloring_dict[node] for node in G.nodes()]
                 
-                fig, ax = plt.subplots(figsize=(11, 8)) # Más espacio
+                # 3. Lienzo un poco más grande
+                fig, ax = plt.subplots(figsize=(12, 9)) 
                 
-                # 3. Layout más orgánico
-                # Esta es la clave para que se vea "lindo" y no "explotado"
+                # 4. Layout orgánico
                 pos = nx.kamada_kawai_layout(G) 
                 
-                # 4. Paleta de colores más suave
+                # 5. Paleta de colores pastel
                 cmap = plt.cm.get_cmap('Set2') 
                 
                 nx.draw(
@@ -183,23 +185,26 @@ with col2:
                     pos,
                     labels=wrapped_labels,
                     with_labels=True,
-                    node_color=node_colors,     # Colores basados en el coloreo
-                    cmap=cmap,                  # Paleta de colores pastel
-                    node_size=3500,
-                    edgecolors='black',         # Borde sutil para los nodos
-                    linewidths=0.5,             # Grosor del borde
-                    font_size=9,
+                    node_color=node_colors,     
+                    cmap=cmap,                  
+                    node_size=4000,             
+                    edgecolors='black',         
+                    linewidths=0.5,             
+                    font_size=10,               
                     font_weight="bold",
-                    font_color="black",         # <-- IMPORTANTE: Letra negra para colores claros
-                    edge_color="#AAAAAA",       # Color de aristas más suave (gris)
-                    style="dashed",             # Estilo de línea más ligero
+                    font_color="black",         
+                    edge_color="#AAAAAA",       
+                    style="dashed",             
                     ax=ax
                 )
                 
-                # 5. Limpiar el fondo
-                fig.patch.set_facecolor('#FFFFFF')
-                ax.set_facecolor('#FFFFFF')
-                ax.set_title("Materias (Nodos) y Conflictos (Aristas)", pad=20) # Añadir espacio al título
+                # 6. Limpiar el fondo
+                fig.patch.set_facecolor('#FFFFFF') # Fondo de la app
+                ax.set_facecolor('#FFFFFF') # Fondo del gráfico
+                ax.set_title("Grafo de Materias y Conflictos", pad=20, fontsize=16) 
+                
+                # 7. Añadir márgenes
+                ax.margins(0.20) 
                 
                 st.pyplot(fig)
 
